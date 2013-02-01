@@ -4,8 +4,16 @@
 <link rel="stylesheet" href="rickshaw/rickshaw.min.css">
 <script src="rickshaw/rickshaw.min.js"></script>
 
+<link type="text/css" rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.15/jquery-ui.min.js"></script>
+
+
+
+
 <style>
 div#chart_container {
+        position: relative;
         display: inline-block;
         font-family: Arial, Helvetica, sans-serif;
 }
@@ -16,6 +24,11 @@ div#y_axis {
         float: left;
         width: 40px;
 }
+
+div#sidebar {
+            display: inline-block;
+        font-family: Arial, Helvetica, sans-serif;
+}
 div#legend {
         float: left;
         margin-left: 15px;
@@ -25,11 +38,13 @@ div#legend {
         margin: 2em 0 0 15px;
         font-size: 13px;
 }
+#slider {
+    margin-top: 10px;
+    display: block;
+}
 </style>
 
-<div id="chart_container">
-    <div id="y_axis"></div>
-    <div id="chart"></div>
+<div id="sidebar">
     <div id="legend"></div>
     <form id="offset_form" class="toggler">
         <input type="radio" name="offset" id="lines" value="lines" checked>
@@ -38,6 +53,13 @@ div#legend {
         <label class="stack" for="stack">stack</label>
     </form>
 </div>
+<div id="chart_container">
+    <div id="y_axis"></div>
+    <div id="chart"></div>
+    <div id="timeline"></div>
+    <div id="slider"></div>
+</div>
+
 
 <script>
 
@@ -45,8 +67,8 @@ var palette = new Rickshaw.Color.Palette();
 
 var graph = new Rickshaw.Graph( {
         element: document.querySelector("#chart"),
-        width: 540,
-        height: 240,
+        width: 750,
+        height: 300,
         renderer: "line",
         interpolation: "step-after",
         series: [
@@ -73,6 +95,9 @@ var graph = new Rickshaw.Graph( {
         ]
 } );
 
+
+graph.render();
+
 var x_axis = new Rickshaw.Graph.Axis.Time( { graph: graph } );
 var y_axis = new Rickshaw.Graph.Axis.Y( {
         graph: graph,
@@ -85,6 +110,12 @@ var legend = new Rickshaw.Graph.Legend( {
         element: document.querySelector('#legend'),
         graph: graph
 } );
+
+var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
+    graph: graph,
+    legend: legend
+});
+
 
 
 var offsetForm = document.getElementById('offset_form');
@@ -103,6 +134,12 @@ offsetForm.addEventListener('change', function(e) {
 
 }, false);
 
+
 graph.render();
+
+var slider = new Rickshaw.Graph.RangeSlider({
+    graph: graph,
+    element: document.querySelector('#slider')
+});
 
 </script>
