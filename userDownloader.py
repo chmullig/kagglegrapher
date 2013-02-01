@@ -3,22 +3,25 @@ import mechanize
 from subprocess import call
 import os, sys
 import csv
+from collections import Counter
+import operator
 
 from config import *
 #expect to find the following defined in config: 
 # email, password,
-# url (eg = "http://inclass.kaggle.com/c/columbia-university-introduction-to-data-science-fall-2012/publicleaderboarddata.zip"),
-# filename (eg = "columbia-university-introduction-to-data-science-fall-2012_public_leaderboard.csv")
-TMP_FILENAME = "user_downloader.tmp"
+
+TMP_FILENAME = "USER_DOWNLOADER.status"
 
 def generate_list_of_users(team_file):
     print '   -> Loading team data...'
     team_csv = csv.reader(open(team_file, "rU"))
-    users = set()
+    user_counts = Counter()
     header = team_csv.next()
     for row in team_csv:
-        users.add(int(row[1]))
-    users = sorted(users)
+        user_counts[int(row[1])] += 1
+    users = [x[0] for x in
+        sorted(user_counts.items(), key=operator.itemgetter(1), reverse=True)]
+    print user_counts.most_common(10)
 
     #Let's check if we terminated before we were done, and if so continue from there
     last_id = 0
