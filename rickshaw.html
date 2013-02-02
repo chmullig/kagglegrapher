@@ -12,9 +12,12 @@ header = leaderboard.next()
 
 names = {}
 submissions = {}
+maxdate = 0
 for teamid, teamname, subdate, score in leaderboard:
     names[teamid] = teamname
     timestamp = time.mktime(parser.parse(subdate).timetuple())
+    if timestamp > maxdate:
+        maxdate = timestamp
     score = float(score)
 
     try:
@@ -22,10 +25,13 @@ for teamid, teamname, subdate, score in leaderboard:
     except:
         submissions[teamid] = [(timestamp, score)]
 
+#TODO sort this by the current ranking.
 results = []
 for teamid, name in names.iteritems():
     entry = {"name" : name, "color" : "palette.color()"}
-    entry["data"] = [{"x" : t, "y" : s} for (t, s) in submissions[teamid]]
+    entry["data"] = [{"x" : t, "y" : s} for (t, s) in sorted(submissions[teamid])]
+    highscore = sorted(submissions[teamid])[-1][1]
+    entry["data"].append({"x" : maxdate, "y" : highscore})
     results.append(entry)
 
 results_json = json.dumps(results)
@@ -51,6 +57,8 @@ div#chart_container {
         position: relative;
         display: inline-block;
         font-family: Arial, Helvetica, sans-serif;
+        margin-left: 10px;
+        margin-top: 10px;
 }
 div#chart {
         float: left;
@@ -65,8 +73,12 @@ div#sidebar {
         font-family: Arial, Helvetica, sans-serif;
 }
 div#legend {
+    display: inline-block;
+        font-family: Arial, Helvetica, sans-serif;
         float: left;
         margin-left: 15px;
+        height: 500px;
+        overflow: auto;
 }
 #offset_form {
         float: left;
@@ -74,25 +86,18 @@ div#legend {
         font-size: 13px;
 }
 #slider {
-    margin-top: 310px;
+    clear: both;
+    margin-top: 5px;
     display: block;
 }
 </style>
-<div id="sidebar">
-    <div id="legend"></div>
-    <form id="offset_form" class="toggler">
-        <input type="radio" name="offset" id="lines" value="lines" checked>
-        <label class="lines" for="lines">lines</label><br>
-        <input type="radio" name="offset" id="stack" value="zero">
-        <label class="stack" for="stack">stack</label>
-    </form>
-</div>
 <div id="chart_container">
     <div id="y_axis"></div>
     <div id="chart"></div>
-    <div id="timeline"></div>
-    <div id="slider"></div>
+        <div id="slider"></div>
 </div>
+<div id="legend"></div>
+
 
 
 <script>
@@ -101,8 +106,8 @@ var palette = new Rickshaw.Color.Palette();
 
 var graph = new Rickshaw.Graph( {
         element: document.querySelector("#chart"),
-        width: 750,
-        height: 300,
+        width: 800,
+        height: 500,
         renderer: "line",
         interpolation: "step-after",
         series: {{ results_json }}
@@ -129,30 +134,22 @@ var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
     legend: legend
 });
 
+var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight({
+    graph: graph,
+    legend: legend
+});
+
+
 var offsetForm = document.getElementById('offset_form');
-
-offsetForm.addEventListener('change', function(e) {
-        var offsetMode = e.target.value;
-
-        if (offsetMode == 'lines') {
-                graph.setRenderer('line');
-                graph.offset = 'zero';
-        } else {
-                graph.setRenderer('stack');
-                graph.offset = offsetMode;
-        }       
-        graph.render();
-
-}, false);
 
 
 graph.render();
-
 
 var slider = new Rickshaw.Graph.RangeSlider({
     graph: graph,
     element: document.querySelector('#slider')
 });
+
 
 
 </script>
