@@ -10,8 +10,16 @@ try:
     import simplejson as json
 except ImportError:
     import json
+from competitions import competitions
+import operator
 ^L
-leaderfile = "leaderboards/columbia-university-introduction-to-data-science-fall-2012_public_leaderboard.csv"
+if "competition" in qs:
+    competition= qs["competition"]
+else:
+    competition = "columbia-university-introduction-to-data-science-fall-2012"
+
+leaderfile = "leaderboards/%s_public_leaderboard.csv" % competition
+competitionName = competitions[competition]
 leaderboard = csv.reader(open(leaderfile))
 header = leaderboard.next()
 
@@ -31,39 +39,58 @@ for teamid, teamname, subdate, score in leaderboard:
         submissions[teamid] = [(timestamp, score)]
 
 #TODO sort this by the current ranking.
-results = []
+temp_results = {}
+maxes = {}
 for teamid, name in names.iteritems():
-    entry = {"name" : name, "color" : "palette.color()"}
+    entry = {"name" : name}
+    if "benchmark" in name.lower():
+        color = "black"
+    else:
+        color = "palette.color()"
+    entry["color"] = color
     entry["data"] = [{"x" : t, "y" : s} for (t, s) in sorted(submissions[teamid])]
     highscore = sorted(submissions[teamid])[-1][1]
+    maxes[teamid] = highscore
     entry["data"].append({"x" : maxdate, "y" : highscore})
-    results.append(entry)
+    temp_results[teamid] = entry
+
+results = []
+for teamid, max in sorted(maxes.items(), key=operator.itemgetter(1)):
+    results.append(temp_results[teamid])
 
 results_json = json.dumps(results)
 results_json = results_json.replace('"palette.color()"', 'palette.color()')
-print results_json
 
 ^L
-<!doctype>
-<script src="http://d3js.org/d3.v3.min.js"></script>
+<!doctype html>
+<head>
+<title>Kaggle Leaderboard: {{ competitionName }}</title>
 
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="rickshaw/rickshaw.min.js"></script>
 <link rel="stylesheet" href="../rickshaw/rickshaw.min.css">
-<script src="../rickshaw/rickshaw.min.js"></script>
+<link type="text/css" rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css">
+<link href="bootstrap/css/bootstrap.css" rel="stylesheet" media="screen">
 
-<link type="text/css" rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css">
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.15/jquery-ui.min.js"></script>
-
-
-
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.15/jquery-ui.min.js"></script>
 
 <style>
+
+#chart_holder {
+    white-space: nowrap;
+    overflow: hidden;
+    width: 1140px;
+}
+
 div#chart_container {
         position: relative;
         display: inline-block;
         font-family: Arial, Helvetica, sans-serif;
         margin-left: 10px;
         margin-top: 10px;
+        width: 900px;
+        white-space: nowrap;
 }
 div#chart {
         float: left;
@@ -84,6 +111,7 @@ div#legend {
         margin-left: 15px;
         height: 500px;
         overflow: auto;
+        text-align: left;
 }
 #offset_form {
         float: left;
@@ -91,22 +119,62 @@ div#legend {
         font-size: 13px;
 }
 #slider {
+    width: 800px;
     clear: both;
+    margin-left: 40px;
     margin-top: 5px;
     display: block;
 }
 </style>
-<div id="chart_container">
-    <div id="y_axis"></div>
-    <div id="chart"></div>
-        <div id="slider"></div>
-</div>
-<div id="legend"></div>
 
+</head>
+<body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+            <div class="container">
+            <a class="brand" href="/">Kaggle Leaderboard Visualization</a>
+            <ul class="nav pull-right">
+            <li><p class="navbar-text">Competition:&nbsp;</p></li>
+            <li><form method="get" action="/" class="navbar-search">
+                <select class="pull-right" name="competition" onchange="this.form.submit();">
+                    {% for comp, name in sorted(competitions.items(), key=operator.itemgetter(1)) %}
+
+                    <option value="{{ comp }}"
+                    {% if comp == competition %}
+                    selected="selected"
+                    {% end %}
+                    >{{ name }}</option>
+
+                    {% end %}
+                </select>
+            </form></li>
+        </div>
+    </div>
+</div>
+
+
+<div class="container">
+    <div class="row">
+        <div class="span9">Testing</div>
+    </div>
+</div>
+
+
+<div class="hero-unit">
+    <h2>Visualize: {{ competitionName }}</h2>
+    <div id="chart_holder">
+    <div id="chart_container">
+        <div id="y_axis"></div>
+        <div id="chart"></div>
+        <div id="slider"></div>
+    </div>
+     <div id="legend"></div>
+ </div>
+</div>
 
 
 <script>
-
 var palette = new Rickshaw.Color.Palette();
 
 var graph = new Rickshaw.Graph( {
@@ -154,7 +222,9 @@ var slider = new Rickshaw.Graph.RangeSlider({
     graph: graph,
     element: document.querySelector('#slider')
 });
-
-
-
 </script>
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.2.2/bootstrap.min.js"></script>
+
+</body>
