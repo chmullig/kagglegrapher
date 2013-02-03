@@ -60,8 +60,6 @@ competitions = {
         "informs2010" : "INFORMS Data Mining Contest 2010",
         "tourism1" : "Tourism Forecasting Part One",
         "hivprogression" : "Predict HIV Progression",
-        "worldcup2010" : "World Cup 2010 - Take on the Quants",
-        "worldcupconf" : "World Cup 2010 - Confidence Challenge",
         "Eurovision2010" : "Forecast Eurovision Voting",
         "columbia-university-introduction-to-data-science-fall-2012" : "Columbia University - Introduction to Data Science, Fall 2012",
 }
