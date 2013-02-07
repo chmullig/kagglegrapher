@@ -15,35 +15,36 @@ scores$SubmissionDate <- strptime(scores$SubmissionDate, "%m/%d/%Y %r", tz="UTC"
 scores$day <- as.Date(trunc(scores$SubmissionDate, units="days"))
 scores <- scores[order(scores$SubmissionDate), ]
 
-mindate <- as.Date(min(scores$SubmissionDate))
-maxdate <- as.Date(max(scores$SubmissionDate))
-xrange <- c(mindate, maxdate)
+mindate <- min(scores$SubmissionDate)
+maxdate <- max(scores$SubmissionDate)
+xrange <- c(as.Date(mindate), as.Date(maxdate))
 
 yrange <- c(min(scores$Score), max(scores$Score))
 
-
-
 dates <- seq(trunc(mindate, units="days"), trunc(maxdate, units="days")+60*60*24, by=60*60*24)
+fakedate <- dates[length(dates)]
 teams <- unique(scores$TeamName)
+
+
 getbest <- function(Df) max(Df$Score)
 daily_best <- ddply(scores, .(TeamName, day), getbest)
+augmented <- daily_best
+for (TeamName in unique(scores$TeamName)) {
+    currScore <- max(scores$Score[scores$TeamName==TeamName])
+    augmented <- rbind(augmented, data.frame(TeamName=TeamName, day=fakedate, V1=currScore))
+}
 
 getactivity <- function(Df) c(nrow(Df), max(Df$Score))
 activity <- ddply(scores, .(day), getactivity)
 activity$maxtodate <- cummax(activity$V2)
+activity <- rbind(activity, data.frame(day=fakedate, V1=0, V2=0, maxtodate=max(scores$Score)))
 
-daily_max_graph <- ggplot(activity, aes(day, maxtodate)) + geom_step() + scale_x_date(limits=c(mindate, maxdate))
-daily_activity_graph <- ggplot(activity, aes(day, V1)) + geom_bar(stat="identity") + scale_x_date(limits=c(mindate, maxdate))
+daily_max_graph <- ggplot(activity, aes(day, maxtodate)) + geom_step() + scale_x_date(limits=xrange)
+daily_activity_graph <- ggplot(activity, aes(day, V1)) + geom_bar(stat="identity") + scale_x_date(limits=xrange)
 
-augmented <- daily_best
-for (TeamName in unique(scores$TeamName)) {
-    currScore <- max(scores$Score[scores$TeamName==TeamName])
-    augmented <- rbind(augmented, c(TeamName, as.POSIXlt(dates[length(dates)]), currScore))
-}
-
-
-
-
+augmented$offleader <- with(merge(augmented, activity, by="day", all=TRUE), V1.x - maxtodate)
+ggplot(augmented, aes(x=day, y=offleader, colour=TeamName)) + geom_step()  + scale_x_date(limits=xrange) + scale_y_log10()
+ggplot(augmented, aes(x=day, y=sqrt(V1), colour=TeamName)) + geom_step()  + scale_x_date(limits=xrange)
 
 #Ensure the text size and trim length are set properly to show as much name as possible
 TEXTSIZE <- .75
