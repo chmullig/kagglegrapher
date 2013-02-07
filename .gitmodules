@@ -1,3 +1,3 @@
 [submodule "rickshaw"]
-	path = rickshaw
+	path = interactive/rickshaw
 	url = https://github.com/shutterstock/rickshaw.git
