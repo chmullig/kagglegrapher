@@ -1,13 +1,14 @@
 # Kaggle Leaderboard Confetti Graph
 require(ggplot2)
+require(gridExtra)
 
-temp <- c("columbia-university-introduction-to-data-science-fall-2012", TRUE, "12/10/2012")
+#temp <- c("columbia-university-introduction-to-data-science-fall-2012", TRUE, "12/10/2012")
 #temp <- c("traveling-santa-problem", FALSE, "12/20/2012")
 #temp <- c("DarkWorlds", FALSE, "12/8/2012")
 #temp <- c("GiveMeSomeCredit", TRUE, "11/15/2011")
 #temp <- c("ChessRatings2", FALSE)
 #temp <- c("FacebookRecruiting", TRUE, "7/15/2012")
-#temp <- c("asap-aes", TRUE, "5/1/2012")
+temp <- c("asap-aes", TRUE, "5/1/2012")
 #temp <- c("us-census-challenge", FALSE, "11/01/2012")
 
 
@@ -17,7 +18,7 @@ MAXDATE <- strptime(temp[3], "%m/%d/%Y")
 
 filename <- paste("../leaderboards/", COMP, "_public_leaderboard.csv", sep="")
 TITLE <- "Columbia Intro Data Science 2012, Kaggle Competition"
-output <- paste(COMP, "confettiboard.png", sep="_")
+output <- paste(COMP, "compositeboard.png", sep="_")
 
 
 if (BIGGER_BETTER) {
@@ -39,7 +40,7 @@ scores$besttodate <- cumbest(scores$Score)
 
 mindate <- min(scores$SubmissionDate)
 maxdate <- max(scores$SubmissionDate)
-xrange <- c(as.Date(mindate), as.Date(MAXDATE))
+xrange <- c(as.Date(mindate), as.Date(MAXDATE)+1)
 
 if(BIGGER_BETTER) {
     yrange <- c(quantile(scores$Score)[1], max(scores$Score))
@@ -68,6 +69,21 @@ activity <- rename(activity, c( "as.POSIXct(SubmissionDate)"="day"))
 activity$besttodate <- cumbest(activity$dailybest)
 
 
+dailyranks <- NULL
+for (d in 1:length(dates)) {
+    today <- dates[d]
+    beststoday <- ddply(scores[as.Date(scores$SubmissionDate) <= today, ], .(TeamName), getbest)
+    ranks <- rank(-beststoday$best, ties.method="first")
+    lastranks <- data.frame("day"=rep(today, length(ranks)), "TeamName"=beststoday$TeamName, "best"=beststoday$best, "rank"=ranks)
+    dailyranks <- rbind(dailyranks, lastranks)
+}
+lastranks$day <- lastranks$day+1
+dailyranks <- rbind(dailyranks, lastranks)
+
+
+
+
+
 cumquantile <- function(x) {
     tmp <- c()
     for (i in 1:length(x))
@@ -83,10 +99,10 @@ if (BIGGER_BETTER) {
     scoredist <- rename(scoredist, c("0%"="q_0", "10%"="q_1", "25%"="q_2", "50%"="q_3"))
 }
 mtextdf <- data.frame(x=rep(as.POSIXct(fakedate), 4),
-                    y=unlist(scoredist[nrow(scoredist), c("q_0", "q_1", "q_2", "q_3")]),
-                    label=c("Leader", "90th", "75th", "50th"))
-                                    
-                                    
+                      y=unlist(scoredist[nrow(scoredist), c("q_0", "q_1", "q_2", "q_3")]),
+                      label=c("Leader", "90th", "75th", "50th"))
+
+
 
 bestscore <- best(scores$Score)
 extrarow <- activity[nrow(activity), ]
@@ -101,39 +117,44 @@ improvements <- rbind(improvements, improvements[nrow(improvements), ])
 improvements[nrow(improvements), ]$SubmissionDate <- maxdate
 
 
+mytheme <- theme(legend.position="none"
+    ,plot.background = element_blank()
+    ,panel.grid.minor = element_blank()
+    ,panel.grid.major.y = element_blank()
+    ,panel.grid.major.x = element_line(colour="grey")
+    ,panel.border = element_blank()
+    ,panel.background = element_blank()
+    ,axis.line = element_line(colour="grey")
+    ,text = element_text(family="Tahoma"))
 
+daily_max_graph <- ggplot(activity, aes(as.Date(day), besttodate)) +
+    geom_step() +
+    scale_x_date(limits=as.Date(xrange)) +
+    xlab("Submission Date") +
+    ylab("Leader") +
+    mytheme + 
+    theme(axis.title.x = element_blank())
 
+daily_activity_graph <- ggplot(activity, aes(as.Date(day), improvements)) +
+    geom_bar(stat="identity") +
+    scale_x_date(limits=as.Date(xrange)) +
+    xlab("Submission Date") +
+    ylab("Daily Submissions") +
+    mytheme
 
-#daily_max_graph <- ggplot(activity, aes(day, maxtodate)) + geom_step() + scale_x_date(limits=xrange)
-#daily_activity_graph <- ggplot(activity, aes(day, V1)) + geom_bar(stat="identity") + scale_x_date(limits=xrange)
-
-#augmented$offleader <- with(merge(augmented, activity, by="day", all=TRUE), V1.x - maxtodate)
-#ggplot(augmented, aes(x=day, y=offleader, colour=TeamName)) + geom_step()  + scale_x_date(limits=xrange) + scale_y_log10()
-#ggplot(augmented, aes(x=day, y=sqrt(V1), colour=TeamName)) + geom_step()  + scale_x_date(limits=xrange)
-
-png(output, width=900, height=506)
-ggplot(improvements, aes(x=as.POSIXct(SubmissionDate), y=Score, colour=TeamName, group=1)) +
-    geom_step(size=1.5) +
-    scale_x_datetime(limits=as.POSIXct(xrange)) +
-    scale_y_continuous(limits=yrange) +
-    geom_smooth(data=scoredist, size=1, colour="grey", aes(x=SubmissionDate, y=q_1)) +
-    geom_smooth(data=scoredist, size=1, colour="grey", aes(x=SubmissionDate, y=q_2)) +
-    geom_smooth(data=scoredist, size=1, colour="grey", aes(x=SubmissionDate, y=q_3)) +
-    geom_point(data=scores, aes(as.POSIXct(SubmissionDate), Score, colour=TeamName, group=TeamName),
-               size=1.5) + 
-    geom_text(data=mtextdf, aes(x, y, label=label), colour="#111111", size=3.75, hjust=0) +
-    geom_text(data=data.frame(x=as.POSIXct(fakedate), y=yrange[2], label="Percentile"),
-              aes(x, y, label=label), colour="black", size=5, vjust=-.35, hjust=.675) +
+rank_graph <- ggplot(dailyranks, aes(x=day, y=rank, colour=TeamName, group=TeamName)) +
+    geom_line(size=1.5) +
+    scale_x_date(limits=as.Date(xrange)) +
+    scale_y_reverse(limits=c(25, 1)) +
+    geom_text(data=lastranks, aes(x=day, y=rank, label=paste(rank, TeamName)), hjust=0, size=5) +
     ggtitle(COMP) + 
-    xlab("Submission Date") + 
-    theme(legend.position="none"
-          ,plot.background = element_blank()
-          ,panel.grid.minor = element_blank()
-          ,panel.grid.major.y = element_blank()
-          ,panel.grid.major.x = element_line(colour="grey")
-          ,panel.border = element_blank()
-          ,panel.background = element_blank()
-          ,axis.line = element_line(colour="grey")
-          ,text = element_text(family="Tahoma")) 
+    ylab("Ranks (top 25)") +
+    mytheme + 
+    theme(axis.title.x = element_blank())
+
+composite <- grid.arrange(rank_graph, daily_max_graph, daily_activity_graph, ncol=1, heights=c(10, 3, 3))
+
+png(output, width=900, height=600)
+grid.arrange(rank_graph, daily_max_graph, daily_activity_graph, ncol=1, heights=c(10, 2, 2))
 dev.off()
 print(output)
